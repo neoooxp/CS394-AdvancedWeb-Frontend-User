@@ -1,3 +1,5 @@
+import { fetchAllPages, extractPaginatedData } from '../../../services/apiUtils';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 /**
@@ -33,7 +35,7 @@ export async function fetchDriverDashboardData() {
   let assignedRoute = null;
 
   if (driverId) {
-    // 1. Fetch routes from API
+    // 1. Fetch routes from API (paginated - fetch all pages)
     try {
       const routesRes = await fetch(`${API_BASE_URL}/routes`, { headers });
       if (routesRes.status === 401) {
@@ -45,13 +47,13 @@ export async function fetchDriverDashboardData() {
         return;
       }
       if (routesRes.ok) {
-        allRoutes = await routesRes.json();
+        allRoutes = await fetchAllPages(`${API_BASE_URL}/routes`, headers);
       }
     } catch (err) {
       console.warn('API GET /routes fetch error:', err);
     }
 
-    // 2. Fetch driver schedules / bus assignments from API
+    // 2. Fetch driver schedules / bus assignments from API (paginated)
     try {
       const scheduleRes = await fetch(`${API_BASE_URL}/driver/schedule?driver_id=${driverId}`, { headers });
       if (scheduleRes.status === 401) {
@@ -63,7 +65,7 @@ export async function fetchDriverDashboardData() {
         return;
       }
       if (scheduleRes.ok) {
-        driverSchedule = await scheduleRes.json();
+        driverSchedule = await extractPaginatedData(scheduleRes);
       }
     } catch (err) {
       console.warn('API GET /driver/schedule fetch error:', err);

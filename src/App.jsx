@@ -6,6 +6,7 @@ import { LoginForm } from './features/auth/components/LoginForm';
 import { DriverDashboardPage } from './features/dashboard/pages/DriverDashboardPage';
 import { MyRoutePage } from './features/dashboard/pages/MyRoutePage';
 import { DriverSchedulePage } from './features/dashboard/pages/DriverSchedulePage';
+import { MaintenancePage } from './features/maintenance/components/MaintenancePage';
 import { DashboardLayout } from './components/layout/DashboardLayout';
 
 // Initialize TanStack Query client
@@ -73,7 +74,7 @@ export default function App() {
             <Route path="/dashboard" element={<DriverDashboardPage onLogout={handleLogout} />} />
             <Route path="/my-route" element={<MyRoutePage onLogout={handleLogout} />} />
             <Route path="/attendance" element={<ModulePlaceholder title="Attendance" onLogout={handleLogout} />} />
-            <Route path="/maintenance" element={<ModulePlaceholder title="Maintenance Requests" onLogout={handleLogout} />} />
+            <Route path="/maintenance" element={<MaintenancePage onLogout={handleLogout} />} />
             <Route path="/schedule" element={<DriverSchedulePage onLogout={handleLogout} />} />
             <Route path="/profile" element={<ModulePlaceholder title="Profile" onLogout={handleLogout} />} />
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

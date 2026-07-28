@@ -1,3 +1,5 @@
+import { fetchAllPages, extractPaginatedData } from '../../../services/apiUtils';
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
 /**
@@ -42,7 +44,7 @@ export async function fetchDriverRouteData() {
   let assignedRoute = null;
   let manifestStops = [];
 
-  // 1. Fetch all routes from API
+  // 1. Fetch all routes from API (paginated)
   try {
     const routesRes = await fetch(`${API_BASE_URL}/routes`, { headers });
     if (routesRes.status === 401) {
@@ -54,7 +56,7 @@ export async function fetchDriverRouteData() {
       return;
     }
     if (routesRes.ok) {
-      allRoutes = await routesRes.json();
+      allRoutes = await fetchAllPages(`${API_BASE_URL}/routes`, headers);
     }
   } catch (err) {
     console.warn('API GET /routes fetch error:', err);
@@ -72,17 +74,17 @@ export async function fetchDriverRouteData() {
       return;
     }
     if (schedRes.ok) {
-      driverSchedules = await schedRes.json();
+      driverSchedules = await extractPaginatedData(schedRes);
     }
   } catch (err) {
     console.warn('API GET /driver/schedule fetch error:', err);
   }
 
-  // 3. Fetch all buses from API
+  // 3. Fetch all buses from API (paginated)
   try {
     const busesRes = await fetch(`${API_BASE_URL}/buses`, { headers });
     if (busesRes.ok) {
-      allBuses = await busesRes.json();
+      allBuses = await fetchAllPages(`${API_BASE_URL}/buses`, headers);
     }
   } catch (err) {
     console.warn('API GET /buses fetch error:', err);
@@ -285,6 +287,26 @@ export async function updateStudentAttendance({ studentId, status, routeId }) {
 }
 
 /**
+ * Generates a final attendance report for a route on the backend.
+ * Called when the driver clicks "Route Completed".
+ */
+export async function generateRouteReport(routeId) {
+  const headers = getAuthHeaders();
+
+  const response = await fetch(`${API_BASE_URL}/operations/routes/${routeId}/reports`, {
+    method: 'POST',
+    headers,
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.message || 'Failed to generate route report');
+  }
+
+  return await response.json();
+}
+
+/**
  * Fetches the driver's weekly schedule matrix directly from backend API.
  */
 export async function fetchDriverWeeklyScheduleData() {
@@ -305,10 +327,10 @@ export async function fetchDriverWeeklyScheduleData() {
       fetch(`${API_BASE_URL}/maintenance/requests`, { headers }).catch(() => null)
     ]);
 
-    if (schedRes && schedRes.ok) schedules = await schedRes.json();
-    if (routesRes && routesRes.ok) routes = await routesRes.json();
-    if (busesRes && busesRes.ok) buses = await busesRes.json();
-    if (maintRes && maintRes.ok) maintenanceRequests = await maintRes.json();
+    if (schedRes && schedRes.ok) schedules = await extractPaginatedData(schedRes);
+    if (routesRes && routesRes.ok) routes = await fetchAllPages(`${API_BASE_URL}/routes`, headers);
+    if (busesRes && busesRes.ok) buses = await fetchAllPages(`${API_BASE_URL}/buses`, headers);
+    if (maintRes && maintRes.ok) maintenanceRequests = await fetchAllPages(`${API_BASE_URL}/maintenance/requests`, headers);
   } catch (err) {
     console.warn('Error fetching weekly schedule API data:', err);
   }

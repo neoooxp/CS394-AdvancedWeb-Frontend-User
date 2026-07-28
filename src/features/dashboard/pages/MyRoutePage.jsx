@@ -15,21 +15,54 @@ import {
   ArrowLeft,
   ShieldCheck,
   Map as MapIcon,
-  Check
+  Check,
+  Play,
+  Flag,
+  PartyPopper,
+  Loader2
 } from 'lucide-react';
 import { useDriverRoute } from '../hooks/useDriverRoute';
 import { DashboardLayout } from '../../../components/layout/DashboardLayout';
 import { RouteMap } from '../components/RouteMap';
 
 export function MyRoutePage({ onLogout }) {
-  const { data, isLoading, error, refetch, isRefetching, markAttendance, isUpdatingAttendance } = useDriverRoute();
+  const { data, isLoading, error, refetch, isRefetching, markAttendance, isUpdatingAttendance, completeRoute, isCompletingRoute, completeRouteError } = useDriverRoute();
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [selectedStopId, setSelectedStopId] = useState(null);
   const [routeMode, setRouteMode] = useState('pickup'); // 'pickup' | 'dropoff'
+  const [routeStatus, setRouteStatus] = useState('idle'); // 'idle' | 'active' | 'completed'
+  const [routeStartTime, setRouteStartTime] = useState(null);
+  const [startingRoute, setStartingRoute] = useState(false);
   const [localAttendance, setLocalAttendance] = useState({});
   const [completedStops, setCompletedStops] = useState({});
   const [submittingStopId, setSubmittingStopId] = useState(null);
   const [submitFeedback, setSubmitFeedback] = useState({});
+
+  const handleStartRoute = () => {
+    setStartingRoute(true);
+    setTimeout(() => {
+      setRouteStatus('active');
+      setRouteStartTime(new Date());
+      setStartingRoute(false);
+    }, 800);
+  };
+
+  const handleCompleteRoute = () => {
+    if (!activeRouteData?.route_id) return;
+    completeRoute(
+      { routeId: activeRouteData.route_id },
+      {
+        onSuccess: () => {
+          setRouteStatus('completed');
+        },
+        onError: (err) => {
+          // Still mark completed locally even if report generation fails
+          setRouteStatus('completed');
+          console.warn('Route report generation failed (attendance data is still saved):', err.message);
+        },
+      }
+    );
+  };
 
   const assignedRoutesList = data?.assignedRoutes || (data ? [data] : []);
   const activeRouteData = selectedRouteId 
@@ -189,6 +222,10 @@ export function MyRoutePage({ onLogout }) {
                   onClick={() => {
                     setSelectedRouteId(rt.route_id);
                     setSelectedStopId(null);
+                    setRouteStatus('idle');
+                    setRouteStartTime(null);
+                    setCompletedStops({});
+                    setLocalAttendance({});
                   }}
                   style={{
                     backgroundColor: '#ffffff',
@@ -327,7 +364,7 @@ export function MyRoutePage({ onLogout }) {
           <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
             <button
               type="button"
-              onClick={() => setRouteMode('pickup')}
+              onClick={() => { setRouteMode('pickup'); setRouteStatus('idle'); setRouteStartTime(null); setCompletedStops({}); setLocalAttendance({}); }}
               style={{
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -349,7 +386,7 @@ export function MyRoutePage({ onLogout }) {
 
             <button
               type="button"
-              onClick={() => setRouteMode('dropoff')}
+              onClick={() => { setRouteMode('dropoff'); setRouteStatus('idle'); setRouteStartTime(null); setCompletedStops({}); setLocalAttendance({}); }}
               style={{
                 padding: '8px 16px',
                 borderRadius: '8px',
@@ -453,9 +490,116 @@ export function MyRoutePage({ onLogout }) {
 
         {/* Vertical List of Stops Going Downwards */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '8px' }}>
-          <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-dark)', margin: '8px 0 0 0' }}>
-            Route Sequence ({stops.length} Stops • {routeMode === 'pickup' ? 'Morning Pickup Sequence' : 'Afternoon Reversed Drop-Off Sequence'})
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-dark)', margin: '8px 0 0 0' }}>
+              Route Sequence ({stops.length} Stops • {routeMode === 'pickup' ? 'Morning Pickup Sequence' : 'Afternoon Reversed Drop-Off Sequence'})
+            </h3>
+            {routeStatus === 'active' && routeStartTime && (
+              <span style={{ fontSize: '12px', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '6px', border: '1px solid #6ee7b7' }}>
+                <span style={{ width: '7px', height: '7px', borderRadius: '50%', backgroundColor: '#10b981', display: 'inline-block', animation: 'pulse 1.5s infinite' }} />
+                Route In Progress • Started {routeStartTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </span>
+            )}
+          </div>
+
+          {/* ── START ROUTE BANNER (shown when idle) ── */}
+          {routeStatus === 'idle' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #0544a5 0%, #1d4ed8 100%)',
+              borderRadius: '16px',
+              padding: '28px 32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '20px',
+              boxShadow: '0 8px 32px rgba(5, 68, 165, 0.25)',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Decorative circle */}
+              <div style={{ position: 'absolute', right: '-40px', top: '-40px', width: '180px', height: '180px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.06)', pointerEvents: 'none' }} />
+              <div style={{ position: 'absolute', right: '60px', bottom: '-60px', width: '140px', height: '140px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.04)', pointerEvents: 'none' }} />
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Navigation size={26} color="#ffffff" />
+                </div>
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Ready to Depart</p>
+                  <h3 style={{ fontSize: '20px', fontWeight: 800, color: '#ffffff', margin: '4px 0 0 0', lineHeight: 1.2 }}>
+                    {activeRouteData?.route_name}
+                  </h3>
+                  <p style={{ fontSize: '13px', color: 'rgba(255,255,255,0.75)', margin: '4px 0 0 0' }}>
+                    {stops.length} stops • {activeRouteData?.total_students} passengers • {activeRouteData?.estimated_duration} mins est.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleStartRoute}
+                disabled={startingRoute}
+                style={{
+                  padding: '14px 32px',
+                  backgroundColor: '#10b981',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  cursor: startingRoute ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  boxShadow: '0 6px 20px rgba(16, 185, 129, 0.4)',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  flexShrink: 0
+                }}
+                onMouseEnter={(e) => { if (!startingRoute) { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(16, 185, 129, 0.5)'; }}}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(16, 185, 129, 0.4)'; }}
+              >
+                {startingRoute ? (
+                  <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /><span>Starting...</span></>
+                ) : (
+                  <><Play size={18} style={{ fill: '#fff' }} /><span>Start Route</span></>
+                )}
+              </button>
+            </div>
+          )}
+
+          {/* ── ROUTE COMPLETED CELEBRATION (shown when done) ── */}
+          {routeStatus === 'completed' && (
+            <div style={{
+              background: 'linear-gradient(135deg, #064e3b 0%, #065f46 100%)',
+              borderRadius: '16px',
+              padding: '32px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              gap: '12px',
+              textAlign: 'center',
+              boxShadow: '0 8px 32px rgba(6, 78, 59, 0.3)'
+            }}>
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Flag size={32} color="#6ee7b7" />
+              </div>
+              <h3 style={{ fontSize: '22px', fontWeight: 800, color: '#ffffff', margin: 0 }}>Route Successfully Completed! 🎉</h3>
+              <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', margin: 0 }}>
+                All stops have been processed for <strong style={{ color: '#6ee7b7' }}>{activeRouteData?.route_name}</strong>.
+                Attendance records have been saved.
+              </p>
+              <div style={{ display: 'flex', gap: '12px', marginTop: '8px', flexWrap: 'wrap', justifyContent: 'center' }}>
+                <button
+                  type="button"
+                  onClick={() => { setSelectedRouteId(null); setRouteStatus('idle'); setRouteStartTime(null); setCompletedStops({}); setLocalAttendance({}); }}
+                  style={{ padding: '10px 24px', backgroundColor: '#10b981', color: '#fff', border: 'none', borderRadius: '10px', fontWeight: 700, fontSize: '13px', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '8px' }}
+                >
+                  <ArrowLeft size={16} />
+                  Back to All Routes
+                </button>
+              </div>
+            </div>
+          )}
+
 
           {stops.map((stop, idx) => {
             const stopKey = stop.stop_id || idx;
@@ -598,7 +742,7 @@ export function MyRoutePage({ onLogout }) {
                             <div className="status-actions">
                               <button
                                 type="button"
-                                disabled={isUpdatingAttendance}
+                                disabled={isUpdatingAttendance || routeStatus !== 'active'}
                                 onClick={() =>
                                   handleStatusChange(
                                     student.student_id,
@@ -611,6 +755,7 @@ export function MyRoutePage({ onLogout }) {
                                     ? 'active'
                                     : ''
                                 }`}
+                                title={routeStatus !== 'active' ? 'Start the route first' : ''}
                               >
                                 <CheckCircle2 size={16} />
                                 <span>{primaryActionText}</span>
@@ -618,13 +763,14 @@ export function MyRoutePage({ onLogout }) {
 
                               <button
                                 type="button"
-                                disabled={isUpdatingAttendance}
+                                disabled={isUpdatingAttendance || routeStatus !== 'active'}
                                 onClick={() =>
                                   handleStatusChange(student.student_id, 'Absent', activeRouteData.route_id)
                                 }
                                 className={`status-btn absent-btn ${
                                   currentStatus === 'Absent' ? 'active' : ''
                                 }`}
+                                title={routeStatus !== 'active' ? 'Start the route first' : ''}
                               >
                                 <XCircle size={16} />
                                 <span>Absent</span>
@@ -645,7 +791,8 @@ export function MyRoutePage({ onLogout }) {
                     <button
                       type="button"
                       onClick={() => handleSingleStopCheckIn(stop, idx)}
-                      disabled={isSubmittingThisStop}
+                      disabled={isSubmittingThisStop || routeStatus !== 'active'}
+                      title={routeStatus !== 'active' ? 'Start the route first' : ''}
                       style={{
                         padding: '10px 20px',
                         backgroundColor: isCompleted ? '#10b981' : (routeMode === 'dropoff' ? '#d97706' : 'var(--primary)'),
@@ -678,6 +825,66 @@ export function MyRoutePage({ onLogout }) {
               </div>
             );
           })}
+
+          {/* ── COMPLETE ROUTE BUTTON (shown after all stops when route is active) ── */}
+          {routeStatus === 'active' && (
+            <div style={{
+              marginTop: '8px',
+              background: 'linear-gradient(135deg, #fef3c7 0%, #fffbeb 100%)',
+              border: '2px dashed #f59e0b',
+              borderRadius: '16px',
+              padding: '28px 32px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '20px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                <div style={{ width: '52px', height: '52px', borderRadius: '14px', backgroundColor: '#fde68a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Flag size={26} color="#b45309" />
+                </div>
+                <div>
+                  <p style={{ fontSize: '12px', fontWeight: 700, color: '#92400e', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>End of Route</p>
+                  <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#78350f', margin: '4px 0 0 0' }}>
+                    All stops completed?
+                  </h3>
+                  <p style={{ fontSize: '13px', color: '#92400e', margin: '4px 0 0 0' }}>
+                    Mark the route as complete to finalize attendance records.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleCompleteRoute}
+                disabled={isCompletingRoute}
+                style={{
+                  padding: '14px 32px',
+                  backgroundColor: '#d97706',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '12px',
+                  fontWeight: 800,
+                  fontSize: '15px',
+                  cursor: isCompletingRoute ? 'not-allowed' : 'pointer',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  boxShadow: '0 6px 20px rgba(217, 119, 6, 0.35)',
+                  transition: 'transform 0.15s ease, box-shadow 0.15s ease',
+                  flexShrink: 0
+                }}
+                onMouseEnter={(e) => { if (!isCompletingRoute) { e.currentTarget.style.transform = 'scale(1.04)'; e.currentTarget.style.boxShadow = '0 8px 24px rgba(217, 119, 6, 0.5)'; }}}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(217, 119, 6, 0.35)'; }}
+              >
+                {isCompletingRoute ? (
+                  <><Loader2 size={18} style={{ animation: 'spin 1s linear infinite' }} /><span>Saving Report...</span></>
+                ) : (
+                  <><Flag size={18} /><span>Route Completed</span></>
+                )}
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );

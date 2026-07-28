@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchDriverRouteData, updateStudentAttendance } from '../api/routeApi';
+import { fetchDriverRouteData, updateStudentAttendance, generateRouteReport } from '../api/routeApi';
 
 export function useDriverRoute() {
   const queryClient = useQueryClient();
@@ -16,7 +16,15 @@ export function useDriverRoute() {
     onSuccess: () => {
       // Invalidate route query to refetch fresh data
       queryClient.invalidateQueries({ queryKey: ['driverRoute'] });
-      queryClient.invalidateQueries({ queryKey: ['driverDashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['driver-dashboard'] });
+    },
+  });
+
+  const reportMutation = useMutation({
+    mutationFn: ({ routeId }) => generateRouteReport(routeId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['driverRoute'] });
+      queryClient.invalidateQueries({ queryKey: ['driver-dashboard'] });
     },
   });
 
@@ -24,5 +32,8 @@ export function useDriverRoute() {
     ...routeQuery,
     markAttendance: attendanceMutation.mutate,
     isUpdatingAttendance: attendanceMutation.isPending,
+    completeRoute: reportMutation.mutate,
+    isCompletingRoute: reportMutation.isPending,
+    completeRouteError: reportMutation.error,
   };
 }
