@@ -1,4 +1,4 @@
-import { fetchAllPages, extractPaginatedData } from '../../../services/apiUtils';
+import { extractPaginatedData } from '../../../services/apiUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
@@ -35,9 +35,9 @@ export async function fetchDriverDashboardData() {
   let assignedRoute = null;
 
   if (driverId) {
-    // 1. Fetch routes from API (paginated - fetch all pages)
+    // 1. Fetch driver's routes from API (single page)
     try {
-      const routesRes = await fetch(`${API_BASE_URL}/routes`, { headers });
+      const routesRes = await fetch(`${API_BASE_URL}/routes?driver_id=${driverId}&per_page=50`, { headers });
       if (routesRes.status === 401) {
         localStorage.removeItem('sbms_auth_token');
         localStorage.removeItem('sbms_user');
@@ -47,7 +47,7 @@ export async function fetchDriverDashboardData() {
         return;
       }
       if (routesRes.ok) {
-        allRoutes = await fetchAllPages(`${API_BASE_URL}/routes`, headers);
+        allRoutes = await extractPaginatedData(routesRes);
       }
     } catch (err) {
       console.warn('API GET /routes fetch error:', err);

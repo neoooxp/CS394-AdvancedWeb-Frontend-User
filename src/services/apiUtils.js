@@ -12,23 +12,27 @@ export async function extractPaginatedData(response) {
 }
 
 /**
- * Fetch all pages from a paginated API endpoint.
- * Recursively fetches pages until all data is collected.
+ * Fetch a single page from a paginated API endpoint.
  */
-export async function fetchAllPages(url, headers, page = 1, accumulated = []) {
+export async function fetchPaginated(url, { page = 1, perPage = 25, headers = {} } = {}) {
   const separator = url.includes('?') ? '&' : '?';
-  const response = await fetch(`${url}${separator}page=${page}`, { headers });
+  const response = await fetch(`${url}${separator}page=${page}&per_page=${perPage}`, { headers });
+  if (!response.ok) throw new Error(`API error: ${response.status}`);
   const json = await response.json();
+  return {
+    data: (json && typeof json === 'object' && 'data' in json) ? json.data : Array.isArray(json) ? json : [],
+    currentPage: json.current_page || 1,
+    lastPage: json.last_page || 1,
+    total: json.total || 0,
+    perPage: json.per_page || perPage,
+  };
+}
 
-  const data = (json && typeof json === 'object' && 'data' in json) ? json.data : json;
-  const currentPage = json.current_page || json.meta?.current_page || page;
-  const lastPage = json.last_page || json.meta?.last_page || 1;
-
-  const results = [...accumulated, ...(Array.isArray(data) ? data : [])];
-
-  if (currentPage < lastPage) {
-    return fetchAllPages(url, headers, page + 1, results);
-  }
-
-  return results;
+/**
+ * Fetch the first page of data from a paginated endpoint (backward compat).
+ * Returns just the data array (not the envelope).
+ */
+export async function fetchAllPages(url, headers) {
+  const result = await fetchPaginated(url, { headers: headers || {} });
+  return result.data;
 }

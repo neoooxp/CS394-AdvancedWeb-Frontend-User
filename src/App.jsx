@@ -1,13 +1,15 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Bus } from 'lucide-react';
-import { LoginForm } from './features/auth/components/LoginForm';
-import { DriverDashboardPage } from './features/dashboard/pages/DriverDashboardPage';
-import { MyRoutePage } from './features/dashboard/pages/MyRoutePage';
-import { DriverSchedulePage } from './features/dashboard/pages/DriverSchedulePage';
-import { MaintenancePage } from './features/maintenance/components/MaintenancePage';
+
 import { DashboardLayout } from './components/layout/DashboardLayout';
+
+const LoginForm = lazy(() => import('./features/auth/components/LoginForm').then(m => ({ default: m.LoginForm })));
+const DriverDashboardPage = lazy(() => import('./features/dashboard/pages/DriverDashboardPage').then(m => ({ default: m.DriverDashboardPage })));
+const MyRoutePage = lazy(() => import('./features/dashboard/pages/MyRoutePage').then(m => ({ default: m.MyRoutePage })));
+const DriverSchedulePage = lazy(() => import('./features/dashboard/pages/DriverSchedulePage').then(m => ({ default: m.DriverSchedulePage })));
+const MaintenancePage = lazy(() => import('./features/maintenance/components/MaintenancePage').then(m => ({ default: m.MaintenancePage })));
 
 // Initialize TanStack Query client
 const queryClient = new QueryClient({
@@ -55,31 +57,37 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
-        {!isAuthenticated ? (
-          <div className="login-portal-wrapper">
-            <main className="portal-container">
-              <header className="portal-header">
-                <div className="logo-badge" aria-label="SBMS Logo Icon">
-                  <Bus size={28} strokeWidth={2.2} />
-                </div>
-                <h1 className="logo-title">SBMS</h1>
-                <span className="logo-subtitle">DRIVER PORTAL</span>
-              </header>
-              <LoginForm onLoginSuccess={handleLoginSuccess} />
-            </main>
+        <Suspense fallback={
+          <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <div className="spinner-large" />
           </div>
-        ) : (
-          <Routes>
-            <Route path="/" element={<DriverDashboardPage onLogout={handleLogout} />} />
-            <Route path="/dashboard" element={<DriverDashboardPage onLogout={handleLogout} />} />
-            <Route path="/my-route" element={<MyRoutePage onLogout={handleLogout} />} />
-            <Route path="/attendance" element={<ModulePlaceholder title="Attendance" onLogout={handleLogout} />} />
-            <Route path="/maintenance" element={<MaintenancePage onLogout={handleLogout} />} />
-            <Route path="/schedule" element={<DriverSchedulePage onLogout={handleLogout} />} />
-            <Route path="/profile" element={<ModulePlaceholder title="Profile" onLogout={handleLogout} />} />
-            <Route path="*" element={<Navigate to="/dashboard" replace />} />
-          </Routes>
-        )}
+        }>
+          {!isAuthenticated ? (
+            <div className="login-portal-wrapper">
+              <main className="portal-container">
+                <header className="portal-header">
+                  <div className="logo-badge" aria-label="SBMS Logo Icon">
+                    <Bus size={28} strokeWidth={2.2} />
+                  </div>
+                  <h1 className="logo-title">SBMS</h1>
+                  <span className="logo-subtitle">DRIVER PORTAL</span>
+                </header>
+                <LoginForm onLoginSuccess={handleLoginSuccess} />
+              </main>
+            </div>
+          ) : (
+            <Routes>
+              <Route path="/" element={<DriverDashboardPage onLogout={handleLogout} />} />
+              <Route path="/dashboard" element={<DriverDashboardPage onLogout={handleLogout} />} />
+              <Route path="/my-route" element={<MyRoutePage onLogout={handleLogout} />} />
+              <Route path="/attendance" element={<ModulePlaceholder title="Attendance" onLogout={handleLogout} />} />
+              <Route path="/maintenance" element={<MaintenancePage onLogout={handleLogout} />} />
+              <Route path="/schedule" element={<DriverSchedulePage onLogout={handleLogout} />} />
+              <Route path="/profile" element={<ModulePlaceholder title="Profile" onLogout={handleLogout} />} />
+              <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            </Routes>
+          )}
+        </Suspense>
       </BrowserRouter>
     </QueryClientProvider>
   );

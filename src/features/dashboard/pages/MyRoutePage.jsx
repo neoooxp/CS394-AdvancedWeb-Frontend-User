@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import {
   Navigation,
   Bus,
@@ -26,7 +27,7 @@ import { DashboardLayout } from '../../../components/layout/DashboardLayout';
 import { RouteMap } from '../components/RouteMap';
 
 export function MyRoutePage({ onLogout }) {
-  const { data, isLoading, error, refetch, isRefetching, markAttendance, isUpdatingAttendance, completeRoute, isCompletingRoute, completeRouteError } = useDriverRoute();
+  const { data, isLoading, error, refetch, isRefetching, markAttendance, isUpdatingAttendance, markBulkAttendance, isUpdatingBulkAttendance, completeRoute, isCompletingRoute, completeRouteError } = useDriverRoute();
   const [selectedRouteId, setSelectedRouteId] = useState(null);
   const [selectedStopId, setSelectedStopId] = useState(null);
   const [routeMode, setRouteMode] = useState('pickup'); // 'pickup' | 'dropoff'
@@ -64,6 +65,14 @@ export function MyRoutePage({ onLogout }) {
     );
   };
 
+  const parentRef = useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: stops.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 340,
+    overscan: 5,
+  });
+
   const assignedRoutesList = data?.assignedRoutes || (data ? [data] : []);
   const activeRouteData = selectedRouteId 
     ? (assignedRoutesList.find(r => String(r.route_id) === String(selectedRouteId)) || assignedRoutesList[0])
@@ -95,8 +104,12 @@ export function MyRoutePage({ onLogout }) {
     if (!stop || !stop.students) return;
     const isDropoffAction = routeMode === 'dropoff' ? idx > 0 : idx === stops.length - 1;
     const targetStatus = isDropoffAction ? 'Dropped Off' : 'Boarded';
-    stop.students.forEach((st) => {
-      handleStatusChange(st.student_id, targetStatus, activeRouteData.route_id);
+    markBulkAttendance({
+      attendances: stop.students.map((st) => ({
+        studentId: st.student_id,
+        status: targetStatus,
+        routeId: activeRouteData.route_id,
+      })),
     });
   };
 
@@ -110,9 +123,11 @@ export function MyRoutePage({ onLogout }) {
     const defaultStatus = isDropoffAction ? 'Dropped Off' : 'Boarded';
 
     if (stop.students && stop.students.length > 0) {
-      stop.students.forEach((st) => {
-        const statusToApply = localAttendance[st.student_id] || st.status || defaultStatus;
-        handleStatusChange(st.student_id, statusToApply, activeRouteData.route_id);
+      markBulkAttendance({
+        attendances: stop.students.map((st) => {
+          const statusToApply = localAttendance[st.student_id] || st.status || defaultStatus;
+          return { studentId: st.student_id, status: statusToApply, routeId: activeRouteData.route_id };
+        }),
       });
     }
 
@@ -601,230 +616,240 @@ export function MyRoutePage({ onLogout }) {
           )}
 
 
-          {stops.map((stop, idx) => {
-            const stopKey = stop.stop_id || idx;
-            const isCompleted = completedStops[stopKey];
-            const isSubmittingThisStop = submittingStopId === stopKey;
-            const feedbackText = submitFeedback[stopKey];
+          <div ref={parentRef} style={{ height: '600px', overflow: 'auto' }}>
+            <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: 'relative' }}>
+              {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                const stop = stops[virtualRow.index];
+                const idx = virtualRow.index;
+                const stopKey = stop.stop_id || idx;
+                const isCompleted = completedStops[stopKey];
+                const isSubmittingThisStop = submittingStopId === stopKey;
+                const feedbackText = submitFeedback[stopKey];
 
-            // Determine stop label and action based on routeMode and stop position
-            const isFirst = idx === 0;
-            const isLast = idx === stops.length - 1;
+                const isFirst = idx === 0;
+                const isLast = idx === stops.length - 1;
 
-            let stopTypeLabel = `Stop #${idx}`;
-            if (routeMode === 'pickup') {
-              if (isFirst) stopTypeLabel = 'Depot Origin (Shift Start)';
-              else if (isLast) stopTypeLabel = 'School Destination (Drop-Off)';
-              else stopTypeLabel = `Passenger Pick-up #${idx}`;
-            } else {
-              if (isFirst) stopTypeLabel = 'School Departure (Boarding Origin)';
-              else if (isLast) stopTypeLabel = 'Depot Terminal (Final Return)';
-              else stopTypeLabel = `Home Drop-Off Node #${idx}`;
-            }
+                let stopTypeLabel = `Stop #${idx}`;
+                if (routeMode === 'pickup') {
+                  if (isFirst) stopTypeLabel = 'Depot Origin (Shift Start)';
+                  else if (isLast) stopTypeLabel = 'School Destination (Drop-Off)';
+                  else stopTypeLabel = `Passenger Pick-up #${idx}`;
+                } else {
+                  if (isFirst) stopTypeLabel = 'School Departure (Boarding Origin)';
+                  else if (isLast) stopTypeLabel = 'Depot Terminal (Final Return)';
+                  else stopTypeLabel = `Home Drop-Off Node #${idx}`;
+                }
 
-            const primaryActionIsDropoff = routeMode === 'dropoff' ? !isFirst : isLast;
-            const primaryActionText = primaryActionIsDropoff ? 'Dropped Off' : 'Boarded';
+                const primaryActionIsDropoff = routeMode === 'dropoff' ? !isFirst : isLast;
+                const primaryActionText = primaryActionIsDropoff ? 'Dropped Off' : 'Boarded';
 
-            return (
-              <div 
-                key={stopKey}
-                style={{
-                  position: 'relative',
-                  backgroundColor: '#ffffff',
-                  borderRadius: '16px',
-                  padding: '24px',
-                  border: isCompleted ? '2px solid #10b981' : '1px solid rgba(197, 197, 211, 0.4)',
-                  boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '16px'
-                }}
-              >
-                {/* Vertical Connector Line */}
-                {idx < stops.length - 1 && (
-                  <div 
+                return (
+                  <div
+                    key={stopKey}
                     style={{
                       position: 'absolute',
-                      left: '42px',
-                      bottom: '-24px',
-                      width: '4px',
-                      height: '24px',
-                      backgroundColor: isCompleted ? '#10b981' : '#cbd5e1',
-                      zIndex: 1
+                      top: 0,
+                      left: 0,
+                      width: '100%',
+                      transform: `translateY(${virtualRow.start}px)`,
                     }}
-                  />
-                )}
-
-                {/* Stop Header & Badges */}
-                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-                    {/* Circle Order Badge */}
-                    <div 
-                      style={{
-                        width: '40px',
-                        height: '40px',
-                        borderRadius: '50%',
-                        backgroundColor: isCompleted ? '#10b981' : (routeMode === 'dropoff' ? '#d97706' : 'var(--primary)'),
-                        color: '#ffffff',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontWeight: 800,
-                        fontSize: '14px',
-                        flexShrink: 0,
-                        boxShadow: isCompleted ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(5, 68, 165, 0.2)'
-                      }}
-                    >
-                      {isCompleted ? <Check size={20} /> : <span>{idx + 1}</span>}
-                    </div>
-
-                    <div>
-                      <span className="stop-type-tag" style={{ margin: 0, marginBottom: '4px', backgroundColor: routeMode === 'dropoff' ? '#fef3c7' : '#eff6ff', color: routeMode === 'dropoff' ? '#b45309' : 'var(--primary)' }}>
-                        {stopTypeLabel}
-                      </span>
-                      <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-dark)', margin: '2px 0 0 0' }}>
-                        {stop.stop_address}
-                      </h3>
-                      <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                        <Clock size={13} style={{ color: 'var(--primary)' }} /> ETA: {stop.pickup_time}
-                      </span>
-                    </div>
-                  </div>
-
-                  {isCompleted && (
-                    <span style={{ fontSize: '12px', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                      <CheckCircle2 size={14} /> Stop Completed
-                    </span>
-                  )}
-                </div>
-
-                {feedbackText && (
-                  <div className="status-alert success" style={{ margin: 0 }}>
-                    <ShieldCheck size={18} />
-                    <span>{feedbackText}</span>
-                  </div>
-                )}
-
-                {/* Student Passenger Roster for This Stop */}
-                <div className="passenger-roster-section" style={{ marginTop: '8px' }}>
-                  <div className="roster-header">
-                    <h4 style={{ fontSize: '15px' }}>
-                      <Users size={16} /> Passengers at Stop #{idx + 1} ({stop.students?.length || 0})
-                    </h4>
-                    {stop.students?.length > 0 && (
-                      <button onClick={() => handleMarkAllForStop(stop, idx)} className="mark-all-btn">
-                        Mark All {primaryActionText}
-                      </button>
-                    )}
-                  </div>
-
-                  {stop.students && stop.students.length > 0 ? (
-                    <div className="student-grid">
-                      {stop.students.map((student) => {
-                        const currentStatus =
-                          localAttendance[student.student_id] || student.status || 'Pending';
-
-                        return (
-                          <div key={student.student_id} className="student-card">
-                            <div className="student-info">
-                              <span className="student-avatar">
-                                {student.first_name?.[0]}
-                                {student.last_name?.[0]}
-                              </span>
-                              <div>
-                                <strong className="student-name">
-                                  {student.first_name} {student.last_name}
-                                </strong>
-                                <span className="student-grade">{student.grade_level}</span>
-                              </div>
-                            </div>
-
-                            <div className="status-actions">
-                              <button
-                                type="button"
-                                disabled={isUpdatingAttendance || routeStatus !== 'active'}
-                                onClick={() =>
-                                  handleStatusChange(
-                                    student.student_id,
-                                    primaryActionText,
-                                    activeRouteData.route_id
-                                  )
-                                }
-                                className={`status-btn board-btn ${
-                                  currentStatus === 'Boarded' || currentStatus === 'Dropped Off'
-                                    ? 'active'
-                                    : ''
-                                }`}
-                                title={routeStatus !== 'active' ? 'Start the route first' : ''}
-                              >
-                                <CheckCircle2 size={16} />
-                                <span>{primaryActionText}</span>
-                              </button>
-
-                              <button
-                                type="button"
-                                disabled={isUpdatingAttendance || routeStatus !== 'active'}
-                                onClick={() =>
-                                  handleStatusChange(student.student_id, 'Absent', activeRouteData.route_id)
-                                }
-                                className={`status-btn absent-btn ${
-                                  currentStatus === 'Absent' ? 'active' : ''
-                                }`}
-                                title={routeStatus !== 'active' ? 'Start the route first' : ''}
-                              >
-                                <XCircle size={16} />
-                                <span>Absent</span>
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="empty-roster-msg" style={{ padding: '16px' }}>
-                      <p style={{ margin: 0 }}>No passenger pick-ups or drop-offs scheduled at this depot node.</p>
-                    </div>
-                  )}
-
-                  {/* Complete Check-In Button for This Stop */}
-                  <div style={{ marginTop: '16px', textAlign: 'right' }}>
-                    <button
-                      type="button"
-                      onClick={() => handleSingleStopCheckIn(stop, idx)}
-                      disabled={isSubmittingThisStop || routeStatus !== 'active'}
-                      title={routeStatus !== 'active' ? 'Start the route first' : ''}
-                      style={{
-                        padding: '10px 20px',
-                        backgroundColor: isCompleted ? '#10b981' : (routeMode === 'dropoff' ? '#d97706' : 'var(--primary)'),
-                        color: '#ffffff',
-                        border: 'none',
-                        borderRadius: '10px',
-                        fontWeight: 700,
-                        fontSize: '13px',
-                        cursor: isSubmittingThisStop ? 'not-allowed' : 'pointer',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '8px',
-                        boxShadow: '0 4px 12px rgba(5, 68, 165, 0.2)'
-                      }}
-                    >
-                      {isSubmittingThisStop ? (
-                        <>
-                          <div className="spinner-small" />
-                          <span>Submitting...</span>
-                        </>
-                      ) : (
-                        <>
-                          <CheckCircle2 size={16} />
-                          <span>{isCompleted ? 'Check-In Complete (Re-sync)' : `Complete Stop #${idx + 1} Check-In`}</span>
-                        </>
+                  >
+                    <div style={{
+                      backgroundColor: '#ffffff',
+                      borderRadius: '16px',
+                      padding: '24px',
+                      margin: '0 0 20px 0',
+                      border: isCompleted ? '2px solid #10b981' : '1px solid rgba(197, 197, 211, 0.4)',
+                      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.04)',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '16px'
+                    }}>
+                      {/* Vertical Connector Line */}
+                      {idx < stops.length - 1 && (
+                        <div
+                          style={{
+                            position: 'absolute',
+                            left: '42px',
+                            bottom: '-10px',
+                            width: '4px',
+                            height: '10px',
+                            backgroundColor: isCompleted ? '#10b981' : '#cbd5e1',
+                            zIndex: 1
+                          }}
+                        />
                       )}
-                    </button>
+
+                      {/* Stop Header & Badges */}
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                          <div
+                            style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              backgroundColor: isCompleted ? '#10b981' : (routeMode === 'dropoff' ? '#d97706' : 'var(--primary)'),
+                              color: '#ffffff',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              fontWeight: 800,
+                              fontSize: '14px',
+                              flexShrink: 0,
+                              boxShadow: isCompleted ? '0 4px 12px rgba(16, 185, 129, 0.3)' : '0 4px 12px rgba(5, 68, 165, 0.2)'
+                            }}
+                          >
+                            {isCompleted ? <Check size={20} /> : <span>{idx + 1}</span>}
+                          </div>
+
+                          <div>
+                            <span className="stop-type-tag" style={{ margin: 0, marginBottom: '4px', backgroundColor: routeMode === 'dropoff' ? '#fef3c7' : '#eff6ff', color: routeMode === 'dropoff' ? '#b45309' : 'var(--primary)' }}>
+                              {stopTypeLabel}
+                            </span>
+                            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-dark)', margin: '2px 0 0 0' }}>
+                              {stop.stop_address}
+                            </h3>
+                            <span style={{ fontSize: '12px', color: '#64748b', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
+                              <Clock size={13} style={{ color: 'var(--primary)' }} /> ETA: {stop.pickup_time}
+                            </span>
+                          </div>
+                        </div>
+
+                        {isCompleted && (
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#10b981', backgroundColor: '#ecfdf5', padding: '4px 12px', borderRadius: '20px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <CheckCircle2 size={14} /> Stop Completed
+                          </span>
+                        )}
+                      </div>
+
+                      {feedbackText && (
+                        <div className="status-alert success" style={{ margin: 0 }}>
+                          <ShieldCheck size={18} />
+                          <span>{feedbackText}</span>
+                        </div>
+                      )}
+
+                      <div className="passenger-roster-section" style={{ marginTop: '8px' }}>
+                        <div className="roster-header">
+                          <h4 style={{ fontSize: '15px' }}>
+                            <Users size={16} /> Passengers at Stop #{idx + 1} ({stop.students?.length || 0})
+                          </h4>
+                          {stop.students?.length > 0 && (
+                            <button onClick={() => handleMarkAllForStop(stop, idx)} className="mark-all-btn">
+                              Mark All {primaryActionText}
+                            </button>
+                          )}
+                        </div>
+
+                        {stop.students && stop.students.length > 0 ? (
+                          <div className="student-grid">
+                            {stop.students.map((student) => {
+                              const currentStatus =
+                                localAttendance[student.student_id] || student.status || 'Pending';
+
+                              return (
+                                <div key={student.student_id} className="student-card">
+                                  <div className="student-info">
+                                    <span className="student-avatar">
+                                      {student.first_name?.[0]}
+                                      {student.last_name?.[0]}
+                                    </span>
+                                    <div>
+                                      <strong className="student-name">
+                                        {student.first_name} {student.last_name}
+                                      </strong>
+                                      <span className="student-grade">{student.grade_level}</span>
+                                    </div>
+                                  </div>
+
+                                  <div className="status-actions">
+                                    <button
+                                      type="button"
+                                      disabled={isUpdatingAttendance || isUpdatingBulkAttendance || routeStatus !== 'active'}
+                                      onClick={() =>
+                                        handleStatusChange(
+                                          student.student_id,
+                                          primaryActionText,
+                                          activeRouteData.route_id
+                                        )
+                                      }
+                                      className={`status-btn board-btn ${
+                                        currentStatus === 'Boarded' || currentStatus === 'Dropped Off'
+                                          ? 'active'
+                                          : ''
+                                      }`}
+                                      title={routeStatus !== 'active' ? 'Start the route first' : ''}
+                                    >
+                                      <CheckCircle2 size={16} />
+                                      <span>{primaryActionText}</span>
+                                    </button>
+
+                                    <button
+                                      type="button"
+                                      disabled={isUpdatingAttendance || isUpdatingBulkAttendance || routeStatus !== 'active'}
+                                      onClick={() =>
+                                        handleStatusChange(student.student_id, 'Absent', activeRouteData.route_id)
+                                      }
+                                      className={`status-btn absent-btn ${
+                                        currentStatus === 'Absent' ? 'active' : ''
+                                      }`}
+                                      title={routeStatus !== 'active' ? 'Start the route first' : ''}
+                                    >
+                                      <XCircle size={16} />
+                                      <span>Absent</span>
+                                    </button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="empty-roster-msg" style={{ padding: '16px' }}>
+                            <p style={{ margin: 0 }}>No passenger pick-ups or drop-offs scheduled at this depot node.</p>
+                          </div>
+                        )}
+
+                        <div style={{ marginTop: '16px', textAlign: 'right' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleSingleStopCheckIn(stop, idx)}
+                            disabled={isSubmittingThisStop || routeStatus !== 'active'}
+                            title={routeStatus !== 'active' ? 'Start the route first' : ''}
+                            style={{
+                              padding: '10px 20px',
+                              backgroundColor: isCompleted ? '#10b981' : (routeMode === 'dropoff' ? '#d97706' : 'var(--primary)'),
+                              color: '#ffffff',
+                              border: 'none',
+                              borderRadius: '10px',
+                              fontWeight: 700,
+                              fontSize: '13px',
+                              cursor: isSubmittingThisStop ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '8px',
+                              boxShadow: '0 4px 12px rgba(5, 68, 165, 0.2)'
+                            }}
+                          >
+                            {isSubmittingThisStop ? (
+                              <>
+                                <div className="spinner-small" />
+                                <span>Submitting...</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 size={16} />
+                                <span>{isCompleted ? 'Check-In Complete (Re-sync)' : `Complete Stop #${idx + 1} Check-In`}</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-            );
-          })}
+                );
+              })}
+            </div>
+          </div>
 
           {/* ── COMPLETE ROUTE BUTTON (shown after all stops when route is active) ── */}
           {routeStatus === 'active' && (

@@ -8,7 +8,7 @@ export function useDriverDashboard() {
   return useQuery({
     queryKey: ['driver-dashboard'],
     queryFn: fetchDriverDashboardData,
-    staleTime: 0, // Real-time API query refetch
+    staleTime: 1000 * 30,
     refetchOnMount: true,
   });
 }

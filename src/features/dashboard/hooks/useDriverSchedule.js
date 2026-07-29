@@ -5,7 +5,7 @@ export function useDriverSchedule() {
   return useQuery({
     queryKey: ['driverWeeklySchedule'],
     queryFn: fetchDriverWeeklyScheduleData,
-    staleTime: 0,
+    staleTime: 1000 * 60,
     refetchOnMount: true,
   });
 }

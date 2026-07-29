@@ -1,4 +1,4 @@
-import { fetchAllPages } from '../../../services/apiUtils';
+import { fetchPaginated } from '../../../services/apiUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
@@ -16,27 +16,17 @@ function getStoredUser() {
   return userStr ? JSON.parse(userStr) : null;
 }
 
-export async function fetchMaintenanceRequests() {
+export async function fetchMaintenanceRequests(page = 1) {
   const headers = getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/maintenance/requests`, { headers });
-  if (!response.ok) {
-    if (response.status === 401) {
-      localStorage.removeItem('sbms_auth_token');
-      localStorage.removeItem('sbms_user');
-      sessionStorage.removeItem('sbms_auth_token');
-      sessionStorage.removeItem('sbms_user');
-      window.location.reload();
-    }
-    throw new Error('Failed to fetch maintenance requests');
-  }
-  return fetchAllPages(`${API_BASE_URL}/maintenance/requests`, headers);
+  return fetchPaginated(`${API_BASE_URL}/maintenance/requests`, { page, perPage: 25, headers });
 }
 
 export async function fetchBuses() {
   const headers = getAuthHeaders();
-  const response = await fetch(`${API_BASE_URL}/buses`, { headers });
+  const response = await fetch(`${API_BASE_URL}/buses?per_page=100`, { headers });
   if (!response.ok) throw new Error('Failed to fetch buses');
-  return fetchAllPages(`${API_BASE_URL}/buses`, headers);
+  const json = await response.json();
+  return (json && typeof json === 'object' && 'data' in json) ? json.data : json;
 }
 
 export async function createMaintenanceRequest(payload) {

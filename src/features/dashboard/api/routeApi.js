@@ -1,4 +1,4 @@
-import { fetchAllPages, extractPaginatedData } from '../../../services/apiUtils';
+import { extractPaginatedData } from '../../../services/apiUtils';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:8000/api';
 
@@ -44,9 +44,9 @@ export async function fetchDriverRouteData() {
   let assignedRoute = null;
   let manifestStops = [];
 
-  // 1. Fetch all routes from API (paginated)
+  // 1. Fetch routes assigned to this driver from API
   try {
-    const routesRes = await fetch(`${API_BASE_URL}/routes`, { headers });
+    const routesRes = await fetch(`${API_BASE_URL}/routes?driver_id=${driverId}&per_page=50`, { headers });
     if (routesRes.status === 401) {
       localStorage.removeItem('sbms_auth_token');
       localStorage.removeItem('sbms_user');
@@ -56,7 +56,7 @@ export async function fetchDriverRouteData() {
       return;
     }
     if (routesRes.ok) {
-      allRoutes = await fetchAllPages(`${API_BASE_URL}/routes`, headers);
+      allRoutes = await extractPaginatedData(routesRes);
     }
   } catch (err) {
     console.warn('API GET /routes fetch error:', err);
@@ -80,11 +80,11 @@ export async function fetchDriverRouteData() {
     console.warn('API GET /driver/schedule fetch error:', err);
   }
 
-  // 3. Fetch all buses from API (paginated)
+  // 3. Fetch buses from API (single page)
   try {
-    const busesRes = await fetch(`${API_BASE_URL}/buses`, { headers });
+    const busesRes = await fetch(`${API_BASE_URL}/buses?per_page=100`, { headers });
     if (busesRes.ok) {
-      allBuses = await fetchAllPages(`${API_BASE_URL}/buses`, headers);
+      allBuses = await extractPaginatedData(busesRes);
     }
   } catch (err) {
     console.warn('API GET /buses fetch error:', err);
@@ -268,7 +268,7 @@ export async function updateStudentAttendance({ studentId, status, routeId }) {
   const payload = {
     student_id: studentId,
     date: today,
-    status: status, // 'Boarded', 'Dropped Off', 'Absent'
+    status: status,
     recorded_by: user?.user_id || 1,
   };
 
@@ -281,6 +281,37 @@ export async function updateStudentAttendance({ studentId, status, routeId }) {
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
     throw new Error(errData.message || 'Failed to update attendance status');
+  }
+
+  return await response.json();
+}
+
+/**
+ * Bulk record attendance for multiple students in one API call.
+ */
+export async function updateBulkAttendance({ attendances }) {
+  const headers = getAuthHeaders();
+  const user = getStoredUser();
+  const today = new Date().toISOString().split('T')[0];
+
+  const payload = {
+    attendances: attendances.map((a) => ({
+      student_id: a.studentId,
+      date: today,
+      status: a.status,
+      recorded_by: user?.user_id || 1,
+    })),
+  };
+
+  const response = await fetch(`${API_BASE_URL}/operations/attendance/bulk`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errData = await response.json().catch(() => ({}));
+    throw new Error(errData.message || 'Failed to update attendance');
   }
 
   return await response.json();
@@ -322,15 +353,15 @@ export async function fetchDriverWeeklyScheduleData() {
   try {
     const [schedRes, routesRes, busesRes, maintRes] = await Promise.all([
       fetch(`${API_BASE_URL}/driver/schedule?driver_id=${driverId}`, { headers }),
-      fetch(`${API_BASE_URL}/routes`, { headers }),
-      fetch(`${API_BASE_URL}/buses`, { headers }),
-      fetch(`${API_BASE_URL}/maintenance/requests`, { headers }).catch(() => null)
+      fetch(`${API_BASE_URL}/routes?driver_id=${driverId}&per_page=50`, { headers }),
+      fetch(`${API_BASE_URL}/buses?per_page=100`, { headers }),
+      fetch(`${API_BASE_URL}/maintenance/requests?per_page=25`, { headers }).catch(() => null)
     ]);
 
     if (schedRes && schedRes.ok) schedules = await extractPaginatedData(schedRes);
-    if (routesRes && routesRes.ok) routes = await fetchAllPages(`${API_BASE_URL}/routes`, headers);
-    if (busesRes && busesRes.ok) buses = await fetchAllPages(`${API_BASE_URL}/buses`, headers);
-    if (maintRes && maintRes.ok) maintenanceRequests = await fetchAllPages(`${API_BASE_URL}/maintenance/requests`, headers);
+    if (routesRes && routesRes.ok) routes = await extractPaginatedData(routesRes);
+    if (busesRes && busesRes.ok) buses = await extractPaginatedData(busesRes);
+    if (maintRes && maintRes.ok) maintenanceRequests = await extractPaginatedData(maintRes);
   } catch (err) {
     console.warn('Error fetching weekly schedule API data:', err);
   }

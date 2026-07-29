@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchDriverRouteData, updateStudentAttendance, generateRouteReport } from '../api/routeApi';
+import { fetchDriverRouteData, updateStudentAttendance, updateBulkAttendance, generateRouteReport } from '../api/routeApi';
 
 export function useDriverRoute() {
   const queryClient = useQueryClient();
@@ -7,14 +7,21 @@ export function useDriverRoute() {
   const routeQuery = useQuery({
     queryKey: ['driverRoute'],
     queryFn: fetchDriverRouteData,
-    staleTime: 0, // Always fetch fresh route data
+    staleTime: 1000 * 30,
     refetchOnMount: true,
   });
 
   const attendanceMutation = useMutation({
     mutationFn: updateStudentAttendance,
     onSuccess: () => {
-      // Invalidate route query to refetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['driverRoute'] });
+      queryClient.invalidateQueries({ queryKey: ['driver-dashboard'] });
+    },
+  });
+
+  const bulkAttendanceMutation = useMutation({
+    mutationFn: updateBulkAttendance,
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['driverRoute'] });
       queryClient.invalidateQueries({ queryKey: ['driver-dashboard'] });
     },
@@ -32,6 +39,8 @@ export function useDriverRoute() {
     ...routeQuery,
     markAttendance: attendanceMutation.mutate,
     isUpdatingAttendance: attendanceMutation.isPending,
+    markBulkAttendance: bulkAttendanceMutation.mutate,
+    isUpdatingBulkAttendance: bulkAttendanceMutation.isPending,
     completeRoute: reportMutation.mutate,
     isCompletingRoute: reportMutation.isPending,
     completeRouteError: reportMutation.error,
