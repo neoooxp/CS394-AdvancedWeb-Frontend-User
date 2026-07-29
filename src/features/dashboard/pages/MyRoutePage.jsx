@@ -65,14 +65,6 @@ export function MyRoutePage({ onLogout }) {
     );
   };
 
-  const parentRef = useRef(null);
-  const rowVirtualizer = useVirtualizer({
-    count: stops.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 340,
-    overscan: 5,
-  });
-
   const assignedRoutesList = data?.assignedRoutes || (data ? [data] : []);
   const activeRouteData = selectedRouteId 
     ? (assignedRoutesList.find(r => String(r.route_id) === String(selectedRouteId)) || assignedRoutesList[0])
@@ -86,6 +78,14 @@ export function MyRoutePage({ onLogout }) {
     }
     return rawStops;
   }, [rawStops, routeMode]);
+
+  const parentRef = useRef(null);
+  const rowVirtualizer = useVirtualizer({
+    count: stops.length,
+    getScrollElement: () => parentRef.current,
+    estimateSize: () => 340,
+    overscan: 5,
+  });
 
   const handleStatusChange = (studentId, status, routeId) => {
     setLocalAttendance((prev) => ({ ...prev, [studentId]: status }));
