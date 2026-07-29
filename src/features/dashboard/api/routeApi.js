@@ -309,6 +309,20 @@ export async function updateBulkAttendance({ attendances }) {
     body: JSON.stringify(payload),
   });
 
+  if (response.status === 404) {
+    // Bulk endpoint not deployed yet — fall back to individual calls
+    await Promise.all(
+      attendances.map((a) =>
+        updateStudentAttendance({
+          studentId: a.studentId,
+          status: a.status,
+          routeId: a.routeId,
+        })
+      )
+    );
+    return;
+  }
+
   if (!response.ok) {
     const errData = await response.json().catch(() => ({}));
     throw new Error(errData.message || 'Failed to update attendance');
