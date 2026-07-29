@@ -75,11 +75,10 @@ export function LoginForm() {
                   id={field.name}
                   name={field.name}
                   type="email"
-                  placeholder="name@example.com"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  className={`form-input ${field.state.meta.errors.length ? 'is-invalid' : ''}`}
+                  className={`form-input has-left-icon ${field.state.meta.errors.length ? 'is-invalid' : ''}`}
                 />
               </div>
               {field.state.meta.isTouched && field.state.meta.errors.length > 0 && (
@@ -118,11 +117,10 @@ export function LoginForm() {
                   id={field.name}
                   name={field.name}
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
                   value={field.state.value}
                   onBlur={field.handleBlur}
                   onChange={(e) => field.handleChange(e.target.value)}
-                  className={`form-input has-right-icon ${field.state.meta.errors.length ? 'is-invalid' : ''}`}
+                  className={`form-input has-left-icon has-right-icon ${field.state.meta.errors.length ? 'is-invalid' : ''}`}
                 />
                 <button
                   type="button"
