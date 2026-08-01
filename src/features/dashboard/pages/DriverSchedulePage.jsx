@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useMemo } from 'react';
 import { 
   Calendar as CalendarIcon, 
   Bus, 
@@ -11,7 +11,6 @@ import { useDriverSchedule } from '../hooks/useDriverSchedule';
 
 export function DriverSchedulePage({ onLogout }) {
   const { data, isLoading, error } = useDriverSchedule();
-  const [viewMode, setViewMode] = useState('week'); // 'week' | 'month'
 
   const assignedRoutes = useMemo(() => {
     if (data?.assignedRoutes && data.assignedRoutes.length > 0) {
@@ -88,59 +87,9 @@ export function DriverSchedulePage({ onLogout }) {
                 {weekDateRangeStr} • <strong>{assignedRoutes.length} Active Route Shifts Assigned</strong>
               </p>
             </div>
-
-            {/* View Mode Toggle Switch */}
-            <div style={{ display: 'inline-flex', backgroundColor: '#f1f5f9', padding: '4px', borderRadius: '10px', border: '1px solid #cbd5e1' }}>
-              <button
-                type="button"
-                onClick={() => setViewMode('week')}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: viewMode === 'week' ? '#ffffff' : 'transparent',
-                  color: viewMode === 'week' ? 'var(--primary-brand)' : '#64748b',
-                  boxShadow: viewMode === 'week' ? '0 2px 6px rgba(0, 0, 0, 0.08)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Week View
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('month')}
-                style={{
-                  padding: '6px 16px',
-                  borderRadius: '8px',
-                  fontSize: '13px',
-                  fontWeight: 700,
-                  border: 'none',
-                  cursor: 'pointer',
-                  backgroundColor: viewMode === 'month' ? '#ffffff' : 'transparent',
-                  color: viewMode === 'month' ? 'var(--primary-brand)' : '#64748b',
-                  boxShadow: viewMode === 'month' ? '0 2px 6px rgba(0, 0, 0, 0.08)' : 'none',
-                  transition: 'all 0.15s ease'
-                }}
-              >
-                Month View
-              </button>
-            </div>
           </div>
 
-          {viewMode === 'month' ? (
-            <div style={{ padding: '32px', backgroundColor: '#ffffff', borderRadius: '16px', border: '1px solid rgba(197, 197, 211, 0.3)', textAlign: 'center', margin: '16px 0' }}>
-              <CalendarIcon size={36} style={{ color: 'var(--primary-brand)', marginBottom: '12px' }} />
-              <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-dark)', margin: 0 }}>Month View Calendar</h3>
-              <p style={{ fontSize: '13px', color: '#64748b', marginTop: '6px' }}>Showing full month shift deployment matrix for {weeklyDays[0].monthStr} {new Date().getFullYear()}.</p>
-              <button type="button" onClick={() => setViewMode('week')} style={{ marginTop: '12px', padding: '8px 16px', backgroundColor: 'var(--primary-brand)', color: '#fff', border: 'none', borderRadius: '8px', fontWeight: 600, cursor: 'pointer' }}>
-                Switch to Week Grid View
-              </button>
-            </div>
-          ) : (
-            /* Weekly 7-Day Grid Layout */
+          /* Weekly 7-Day Grid Layout */
             <div 
               style={{ 
                 display: 'grid', 
@@ -252,7 +201,6 @@ export function DriverSchedulePage({ onLogout }) {
                 );
               })}
             </div>
-          )}
         </div>
       )}
     </DashboardLayout>

@@ -4,7 +4,6 @@ import {
   Navigation,
   Wrench,
   Calendar,
-  AlertTriangle,
   LogOut,
 } from 'lucide-react';
 
@@ -48,15 +47,6 @@ export function Sidebar({ onLogout, onReportIncident }) {
 
       {/* Bottom Footer Actions */}
       <div className="sidebar-footer">
-        <button
-          type="button"
-          onClick={onReportIncident}
-          className="report-incident-btn"
-        >
-          <AlertTriangle size={18} />
-          <span>Report Incident</span>
-        </button>
-
         <button
           type="button"
           onClick={onLogout}
