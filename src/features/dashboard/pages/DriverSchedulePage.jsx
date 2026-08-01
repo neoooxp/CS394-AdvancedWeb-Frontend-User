@@ -88,8 +88,6 @@ export function DriverSchedulePage({ onLogout }) {
               </p>
             </div>
           </div>
-
-          /* Weekly 7-Day Grid Layout */
             <div 
               style={{ 
                 display: 'grid', 
