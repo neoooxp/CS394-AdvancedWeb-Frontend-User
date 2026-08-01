@@ -176,13 +176,6 @@ export function DriverSchedulePage({ onLogout }) {
                         <h4 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-dark)', margin: '2px 0 0 0' }}>{day.dayName}</h4>
                         <p style={{ fontSize: '12px', color: '#94a3b8', margin: '4px 0 0 0' }}>No Scheduled Routes</p>
                       </div>
-                      <button 
-                        type="button" 
-                        onClick={() => alert('Available extra shifts sent to your notification center!')} 
-                        style={{ fontSize: '12px', fontWeight: 700, color: 'var(--primary-brand)', border: 'none', background: 'transparent', cursor: 'pointer', textDecoration: 'underline' }}
-                      >
-                        Pick Up Extra Shift?
-                      </button>
                     </div>
                   );
                 }

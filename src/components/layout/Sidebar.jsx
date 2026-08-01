@@ -4,7 +4,6 @@ import {
   Navigation,
   Wrench,
   Calendar,
-  User,
   AlertTriangle,
   LogOut,
 } from 'lucide-react';
@@ -14,7 +13,6 @@ const NAV_ITEMS = [
   { id: 'route', label: 'My Route', icon: Navigation, path: '/my-route' },
   { id: 'maintenance', label: 'Maintenance Requests', icon: Wrench, path: '/maintenance' },
   { id: 'schedule', label: 'Schedule', icon: Calendar, path: '/schedule' },
-  { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
 ];
 
 export function Sidebar({ onLogout, onReportIncident }) {
