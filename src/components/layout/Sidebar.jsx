@@ -2,7 +2,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import {
   LayoutDashboard,
   Navigation,
-  Users,
   Wrench,
   Calendar,
   User,
@@ -13,7 +12,6 @@ import {
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
   { id: 'route', label: 'My Route', icon: Navigation, path: '/my-route' },
-  { id: 'attendance', label: 'Attendance', icon: Users, path: '/attendance' },
   { id: 'maintenance', label: 'Maintenance Requests', icon: Wrench, path: '/maintenance' },
   { id: 'schedule', label: 'Schedule', icon: Calendar, path: '/schedule' },
   { id: 'profile', label: 'Profile', icon: User, path: '/profile' },
