@@ -2,7 +2,6 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 import { DashboardLayout } from '../../../components/layout/DashboardLayout';
 import { useDriverDashboard } from '../hooks/useDriverDashboard';
 import { StatCards } from '../components/StatCards';
-import { TodaySchedule } from '../components/TodaySchedule';
 import { UpcomingStopsTable } from '../components/UpcomingStopsTable';
 
 export function DriverDashboardPage({ onLogout }) {
@@ -39,9 +38,6 @@ export function DriverDashboardPage({ onLogout }) {
 
           {/* Stat Overview Cards */}
           <StatCards stats={data?.stats} />
-
-          {/* Today's Schedule Timeline */}
-          <TodaySchedule schedule={data?.schedule} />
 
           {/* Route Summary & Upcoming Stops */}
           <UpcomingStopsTable

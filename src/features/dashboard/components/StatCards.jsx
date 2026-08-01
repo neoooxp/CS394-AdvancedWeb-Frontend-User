@@ -1,4 +1,4 @@
-import { Bus, Map, GraduationCap, Wrench } from 'lucide-react';
+import { Bus, Map, GraduationCap } from 'lucide-react';
 
 export function StatCards({ stats }) {
   if (!stats) return null;
@@ -44,19 +44,6 @@ export function StatCards({ stats }) {
         <div className="stat-card-body">
           <span className="stat-label">Students Assigned</span>
           <h3 className="stat-value">{stats.students_assigned}</h3>
-        </div>
-      </div>
-
-      {/* Card 4: Pending Maintenance */}
-      <div className="stat-card">
-        <div className="stat-card-header">
-          <div className="stat-icon-badge red">
-            <Wrench size={22} />
-          </div>
-        </div>
-        <div className="stat-card-body">
-          <span className="stat-label">Pending Maintenance</span>
-          <h3 className="stat-value alert-red">{stats.pending_maintenance}</h3>
         </div>
       </div>
     </div>
